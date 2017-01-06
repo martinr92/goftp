@@ -27,4 +27,7 @@ func TestSimpleUpload(t *testing.T) {
 	if err != nil {
 		t.Error("file upload failed!", err)
 	}
+
+	// close connection
+	ftp.Close()
 }

@@ -171,6 +171,7 @@ func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
 // Close quits the connection.
 func (ftp *Ftp) Close() {
 	ftp.connection.Close()
+	fmt.Println("Connection closed")
 }
 
 func (ftp *Ftp) checkTextStatus(text string, status FtpStatus) error {
