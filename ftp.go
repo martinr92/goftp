@@ -98,7 +98,7 @@ func NewFtp(remote string) (*Ftp, error) {
 	return ftp, nil
 }
 
-// Login sends credentails to the FTP server and verifies the server login response status.
+// Login sends credentials to the FTP server and verifies the server login response status.
 func (ftp *Ftp) Login(user string, password string) error {
 	// send username
 	_, _, err := ftp.writeCommand("USER "+user, []FtpStatus{FtpStatusUserNameOK})
