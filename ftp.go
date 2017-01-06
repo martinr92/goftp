@@ -43,13 +43,19 @@ const (
 
 // FtpError is a custom error struct for FTP communication errors.
 type FtpError struct {
-	ExpectedStatusCode FtpStatus
-	ServerResponse     string
+	ExpectedStatusCodes []FtpStatus
+	ServerResponse      string
 }
 
 func (ftpError *FtpError) Error() string {
 	errorString := "invalid server response!"
-	errorString += "\n expected status code: " + strconv.Itoa(int(ftpError.ExpectedStatusCode))
+	errorString += "\n expected status codes: "
+	for i, statusCode := range ftpError.ExpectedStatusCodes {
+		if i != 0 {
+			errorString += ","
+		}
+		errorString += strconv.Itoa(int(statusCode))
+	}
 	errorString += "\n server response: " + ftpError.ServerResponse
 	return errorString
 }
@@ -89,13 +95,13 @@ func NewFtp(remote string) (*Ftp, error) {
 // Login sends credentails to the FTP server and verifies the server login response status.
 func (ftp *Ftp) Login(user string, password string) error {
 	// send username
-	_, err := ftp.writeCommand("USER "+user, FtpStatusUserNameOK)
+	_, _, err := ftp.writeCommand("USER "+user, []FtpStatus{FtpStatusUserNameOK})
 	if err != nil {
 		return err
 	}
 
 	// send password
-	_, err = ftp.writeCommand("PASS "+password, FtpStatusLoginOK)
+	_, _, err = ftp.writeCommand("PASS "+password, []FtpStatus{FtpStatusLoginOK})
 	if err != nil {
 		return err
 	}
@@ -106,7 +112,7 @@ func (ftp *Ftp) Login(user string, password string) error {
 // OpenDirectory changes the current working directory.
 func (ftp *Ftp) OpenDirectory(directory string) error {
 	// send new directory path
-	_, err := ftp.writeCommand("CWD "+directory, FtpStatusFileActionOK)
+	_, _, err := ftp.writeCommand("CWD "+directory, []FtpStatus{FtpStatusFileActionOK})
 	if err != nil {
 		return err
 	}
@@ -116,15 +122,11 @@ func (ftp *Ftp) OpenDirectory(directory string) error {
 }
 
 // Upload a file to the remote server.
+// Make shure, that the correct directory is already open!
+// You can use OpenDirectory to change in the directory you want to use.
 func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
 	// get passive connection data
 	port, err := ftp.passiveConnection()
-	if err != nil {
-		return err
-	}
-
-	// send command to store new file
-	err = ftp.write("STOR " + remoteFilePath)
 	if err != nil {
 		return err
 	}
@@ -139,8 +141,8 @@ func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
 	}
 	defer passiveConn.Close()
 
-	// check main connection response
-	_, err = ftp.readCommand(FtpStatusFileOK)
+	// send store request
+	_, _, err = ftp.writeCommand("STOR "+remoteFilePath, []FtpStatus{FtpStatusFileOK})
 	if err != nil {
 		return err
 	}
@@ -160,7 +162,7 @@ func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
 	passiveConn.Close()
 
 	// check master connectio nstatus
-	_, err = ftp.readCommand(FtpStatusClosingDataConnection)
+	_, _, err = ftp.readCommand([]FtpStatus{FtpStatusClosingDataConnection})
 	if err != nil {
 		return err
 	}
@@ -174,19 +176,21 @@ func (ftp *Ftp) Close() {
 	fmt.Println("Connection closed")
 }
 
-func (ftp *Ftp) checkTextStatus(text string, status FtpStatus) error {
-	statusCodeString := strconv.Itoa(int(status))
-	found := strings.HasPrefix(text, statusCodeString)
-	if !found {
-		err := &FtpError{ServerResponse: text, ExpectedStatusCode: status}
-		return err
+func (ftp *Ftp) checkTextStatus(text string, statusCodes []FtpStatus) (matchedStatusCode *FtpStatus, err error) {
+	for _, statusCode := range statusCodes {
+		statusCodeString := strconv.Itoa(int(statusCode))
+		found := strings.HasPrefix(text, statusCodeString)
+		if found {
+			return &statusCode, nil
+		}
 	}
 
-	return nil
+	err = &FtpError{ServerResponse: text, ExpectedStatusCodes: statusCodes}
+	return nil, err
 }
 
 func (ftp *Ftp) passiveConnection() (int, error) {
-	responseText, err := ftp.writeCommand("PASV", FtpStatusEnteringPassiveMode)
+	responseText, _, err := ftp.writeCommand("PASV", []FtpStatus{FtpStatusEnteringPassiveMode})
 	if err != nil {
 		return 0, err
 	}
@@ -221,20 +225,20 @@ func (ftp *Ftp) read() (string, error) {
 	return text, err
 }
 
-func (ftp *Ftp) readCommand(expectedStatus FtpStatus) (responseText string, err error) {
+func (ftp *Ftp) readCommand(expectedStatusCodes []FtpStatus) (responseText string, matchedStatusCode *FtpStatus, err error) {
 	// read server response
 	responseText, err = ftp.read()
 	if err != nil {
-		return responseText, err
+		return responseText, nil, err
 	}
 
 	// check response code
-	err = ftp.checkTextStatus(responseText, expectedStatus)
+	matchedStatusCode, err = ftp.checkTextStatus(responseText, expectedStatusCodes)
 	if err != nil {
-		return responseText, err
+		return responseText, matchedStatusCode, err
 	}
 
-	return responseText, nil
+	return responseText, matchedStatusCode, nil
 }
 
 func (ftp *Ftp) write(command string) error {
@@ -245,19 +249,19 @@ func (ftp *Ftp) write(command string) error {
 	return err
 }
 
-func (ftp *Ftp) writeCommand(command string, expectedStatus FtpStatus) (responseText string, err error) {
+func (ftp *Ftp) writeCommand(command string, expectedStatusCodes []FtpStatus) (responseText string, matchedStatusCode *FtpStatus, err error) {
 	// send command
 	err = ftp.write(command)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// check server response
-	responseText, err = ftp.readCommand(expectedStatus)
+	responseText, matchedStatusCode, err = ftp.readCommand(expectedStatusCodes)
 	if err != nil {
-		return responseText, err
+		return responseText, matchedStatusCode, err
 	}
 
 	// everything was working great
-	return responseText, nil
+	return responseText, matchedStatusCode, nil
 }
