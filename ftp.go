@@ -30,11 +30,14 @@ const (
 	// FtpStatusLoginOK - User logged in, proceed.
 	FtpStatusLoginOK FtpStatus = 230
 
-	// FtpStatusFileActionOK = Requested file action okay, completed.
+	// FtpStatusFileActionOK - Requested file action okay, completed.
 	FtpStatusFileActionOK FtpStatus = 250
 
-	// FtpStatusUserNameOK - 331 User name okay, need password.
+	// FtpStatusUserNameOK - User name okay, need password.
 	FtpStatusUserNameOK FtpStatus = 331
+
+	// FtpStatusLoginIncorrect - Not logged in.
+	FtpStatusLoginIncorrect FtpStatus = 530
 
 	// FtpStatusRequestedActionNotTaken - Requested action not taken.
 	// File unavailable (e.g., file not found, no access).
