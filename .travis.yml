@@ -3,6 +3,11 @@ language: go
 go:
   - master
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y proftpd-basic
+  - sudo useradd -p $(openssl passwd -1 test) -m -s /bin/bash test
+
 script:
   - go test -race -coverprofile=coverage.txt -covermode=atomic
 
