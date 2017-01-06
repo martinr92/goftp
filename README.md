@@ -1,4 +1,6 @@
 # goftp
+[![Build Status](https://travis-ci.org/martinr92/goftp.svg?branch=master)](https://travis-ci.org/martinr92/goftp)
+
 Goftp is a simple FTP library written in golang.
 
 ## Usage
