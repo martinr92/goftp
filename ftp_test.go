@@ -44,16 +44,28 @@ func TestSimpleUpload(t *testing.T) {
 		t.Error("logon failed", err)
 	}
 
-	// open remote directory
-	// TODO: we should bring this step back, when we're able to create directories
-	/*err = ftpClient.OpenDirectory("/test/")
-	if err != nil {
-		t.Error("change directory failed!", err)
-	}*/
+	// try to open a remote directory, that doesn't exist
+	if err = ftpClient.OpenDirectory("/test/"); err == nil {
+		t.Error("change directory should failed!")
+	}
+
+	// create the directory
+	if err = ftpClient.CreateDirectory("/test/"); err != nil {
+		t.Error("unable to create direcory!", err)
+	}
+
+	// try to create the same directory again
+	if err = ftpClient.CreateDirectory("/test/"); err == nil {
+		t.Error("directory already exists! This should fail!")
+	}
+
+	// open directory
+	if err = ftpClient.OpenDirectory("/test/"); err != nil {
+		t.Error("unable to open directory!", err)
+	}
 
 	// upload a local file to the remote FTP server
-	err = ftpClient.Upload("README.md", "README.md")
-	if err != nil {
+	if err = ftpClient.Upload("README.md", "README.md"); err != nil {
 		t.Error("file upload failed!", err)
 	}
 }

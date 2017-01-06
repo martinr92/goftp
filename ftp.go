@@ -33,6 +33,9 @@ const (
 	// FtpStatusFileActionOK - Requested file action okay, completed.
 	FtpStatusFileActionOK FtpStatus = 250
 
+	// FtpStatusPathCreated - Path created.
+	FtpStatusPathCreated FtpStatus = 257
+
 	// FtpStatusUserNameOK - User name okay, need password.
 	FtpStatusUserNameOK FtpStatus = 331
 
@@ -116,6 +119,18 @@ func (ftp *Ftp) Login(user string, password string) error {
 func (ftp *Ftp) OpenDirectory(directory string) error {
 	// send new directory path
 	_, _, err := ftp.writeCommand("CWD "+directory, []FtpStatus{FtpStatusFileActionOK})
+	if err != nil {
+		return err
+	}
+
+	// great!
+	return nil
+}
+
+// CreateDirectory tells the server, to create a new named directory.
+func (ftp *Ftp) CreateDirectory(directory string) error {
+	// send new folder path
+	_, _, err := ftp.writeCommand("MKD "+directory, []FtpStatus{FtpStatusPathCreated})
 	if err != nil {
 		return err
 	}
