@@ -2,6 +2,7 @@ package goftp
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -225,7 +226,15 @@ func (ftp *Ftp) passiveConnection() (int, error) {
 
 	// calculate port number
 	portPart1, err := strconv.Atoi(portPart1String)
+	if err != nil {
+		return 0, errors.New("unable to parse port for passive data connection")
+	}
+
 	portPart2, err := strconv.Atoi(portPart2String)
+	if err != nil {
+		return 0, errors.New("unable to parse port for passive data connection")
+	}
+
 	port := portPart1*256 + portPart2
 	fmt.Println("Calculated Port:", port)
 
