@@ -62,12 +62,12 @@ func TestLogonError(t *testing.T) {
 	// connect to remote server
 	ftpClient, err := NewFtp("host.not.exists:21")
 	if err == nil {
+		// lose the connection
+		ftpClient.Close()
+
 		t.Error("Error expected! invalid host name")
 		return
 	}
-
-	// don't forget to close the connection
-	ftpClient.Close()
 }
 
 func getConnectionString() string {
