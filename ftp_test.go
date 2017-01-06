@@ -9,6 +9,7 @@ func TestSimpleUpload(t *testing.T) {
 	ftpClient, err := NewFtp(getConnectionString())
 	if err != nil {
 		t.Error("connection failed!", err)
+		return
 	}
 
 	// don't forget to close the connection
@@ -42,31 +43,37 @@ func TestSimpleUpload(t *testing.T) {
 	err = ftpClient.Login("test", "test")
 	if err != nil {
 		t.Error("logon failed", err)
+		return
 	}
 
 	// try to open a remote directory, that doesn't exist
-	if err = ftpClient.OpenDirectory("/test/"); err == nil {
+	if err = ftpClient.OpenDirectory("/home/test/testfolder/"); err == nil {
 		t.Error("change directory should failed!")
+		return
 	}
 
 	// create the directory
-	if err = ftpClient.CreateDirectory("/test/"); err != nil {
+	if err = ftpClient.CreateDirectory("/home/test/testfolder/"); err != nil {
 		t.Error("unable to create direcory!", err)
+		return
 	}
 
 	// try to create the same directory again
-	if err = ftpClient.CreateDirectory("/test/"); err == nil {
+	if err = ftpClient.CreateDirectory("/home/test/testfolder/"); err == nil {
 		t.Error("directory already exists! This should fail!")
+		return
 	}
 
 	// open directory
-	if err = ftpClient.OpenDirectory("/test/"); err != nil {
+	if err = ftpClient.OpenDirectory("/home/test/testfolder/"); err != nil {
 		t.Error("unable to open directory!", err)
+		return
 	}
 
 	// upload a local file to the remote FTP server
 	if err = ftpClient.Upload("README.md", "README.md"); err != nil {
 		t.Error("file upload failed!", err)
+		return
 	}
 }
 
