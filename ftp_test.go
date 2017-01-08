@@ -88,10 +88,6 @@ func TestActiveDataConnection(t *testing.T) {
 	// don't forget to close the connection
 	defer ftpClient.Close()
 
-	// set active mode
-	ftpClient.ActiveMode = true
-	ftpClient.ActiveModeIPv4 = "127.0.0.1"
-
 	// send user credentials
 	err = ftpClient.Login("test", "test")
 	if err != nil {
@@ -110,6 +106,20 @@ func TestActiveDataConnection(t *testing.T) {
 		t.Error("unable to open directory!", err)
 		return
 	}
+
+	// set active mode with an invalid IP
+	ftpClient.ActiveMode = true
+	ftpClient.ActiveModeIPv4 = "1.2.3.4"
+
+	// upload a local file to the remote FTP server
+	if err = ftpClient.Upload("README.md", "README.md"); err == nil {
+		t.Error("file upload should fail!")
+		return
+	}
+
+	// set active mode
+	ftpClient.ActiveMode = true
+	ftpClient.ActiveModeIPv4 = "127.0.0.1"
 
 	// upload a local file to the remote FTP server
 	if err = ftpClient.Upload("README.md", "README.md"); err != nil {
