@@ -19,6 +19,9 @@ const (
 	// FtpStatusFileOK - File status okay; about to open data connection.
 	FtpStatusFileOK FtpStatus = 150
 
+	// FtpStatusCommandOK - Command okay.
+	FtpStatusCommandOK FtpStatus = 200
+
 	// FtpStatusReadyForNewUser - Service ready for new user.
 	FtpStatusReadyForNewUser FtpStatus = 220
 
@@ -69,10 +72,12 @@ func (ftpError *FtpError) Error() string {
 
 // Ftp object for remote connection.
 type Ftp struct {
-	remoteAddr string
-	connection net.Conn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
+	ActiveMode     bool
+	ActiveModeIPv4 string
+	remoteAddr     string
+	connection     net.Conn
+	reader         *bufio.Reader
+	writer         *bufio.Writer
 }
 
 // NewFtp creates a new FTP connection object.
@@ -144,21 +149,17 @@ func (ftp *Ftp) CreateDirectory(directory string) error {
 // Make shure, that the correct directory is already open!
 // You can use OpenDirectory to change in the directory you want to use.
 func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
-	// get passive connection data
-	port, err := ftp.passiveConnection()
+	// get a data connection
+	dataConnPassive, dataConnActive, err := ftp.openDataConnection()
 	if err != nil {
 		return err
 	}
-
-	// open passive connection
-	host := strings.Split(ftp.remoteAddr, ":")[0]
-	passiveRemoteAddr := host + ":" + strconv.Itoa(port)
-	fmt.Println("open passive connection:", passiveRemoteAddr)
-	passiveConn, err := net.Dial("tcp", passiveRemoteAddr)
-	if err != nil {
-		return err
+	if dataConnActive != nil {
+		defer dataConnActive.Close()
 	}
-	defer passiveConn.Close()
+	if dataConnPassive != nil {
+		defer dataConnPassive.Close()
+	}
 
 	// send store request
 	_, _, err = ftp.writeCommand("STOR "+remoteFilePath, []FtpStatus{FtpStatusFileOK})
@@ -172,21 +173,70 @@ func (ftp *Ftp) Upload(localFilePath string, remoteFilePath string) error {
 		return err
 	}
 
+	var dataConn net.Conn
+	if dataConnPassive != nil {
+		dataConn = dataConnPassive
+	} else {
+		// wait for active data connection
+		dataConn, err = dataConnActive.Accept()
+		if err != nil {
+			return err
+		}
+	}
+
 	// send data to remote server
-	// TODO: do some custom stuff instead for bandwidth limitation and progress
-	_, err = io.Copy(passiveConn, localFile)
+	_, err = io.Copy(dataConn, localFile)
 	if err != nil {
 		return err
 	}
-	passiveConn.Close()
+	if dataConnActive != nil {
+		dataConn.Close()
+		dataConnActive.Close()
+	}
+	if dataConnPassive != nil {
+		dataConnPassive.Close()
+	}
 
-	// check master connectio nstatus
+	// check master connection nstatus
 	_, _, err = ftp.readCommand([]FtpStatus{FtpStatusClosingDataConnection})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (ftp *Ftp) openDataConnection() (net.Conn, net.Listener, error) {
+	if !ftp.ActiveMode {
+		// get passive connection data
+		port, err := ftp.passiveConnection()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// open passive connection
+		host := strings.Split(ftp.remoteAddr, ":")[0]
+		passiveRemoteAddr := host + ":" + strconv.Itoa(port)
+		fmt.Println("open passive connection:", passiveRemoteAddr)
+		passiveConn, err := net.Dial("tcp", passiveRemoteAddr)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return passiveConn, nil, nil
+	}
+
+	// active mode
+	activeConn, err := net.Listen("tcp", ftp.ActiveModeIPv4+":0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err = ftp.activeDataConnection(activeConn); err != nil {
+		return nil, nil, err
+	}
+
+	return nil, activeConn, nil
 }
 
 // Close quits the connection.
@@ -239,6 +289,25 @@ func (ftp *Ftp) passiveConnection() (int, error) {
 	fmt.Println("Calculated Port:", port)
 
 	return port, nil
+}
+
+func (ftp *Ftp) activeDataConnection(activeConnection net.Listener) error {
+	// prepare IP part of command
+	ipPart := strings.Replace(ftp.ActiveModeIPv4, ".", ",", 3)
+
+	// prepare port part
+	port := activeConnection.Addr().(*net.TCPAddr).Port
+	portPart1 := port / 256
+	portPart1String := strconv.Itoa(portPart1)
+	portPart2String := strconv.Itoa(port - portPart1*256)
+
+	// send port command
+	_, _, err := ftp.writeCommand("PORT "+ipPart+","+portPart1String+","+portPart2String, []FtpStatus{FtpStatusCommandOK})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (ftp *Ftp) read() (string, error) {
