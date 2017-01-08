@@ -16,9 +16,16 @@ func TestPassiveDataConnection(t *testing.T) {
 	defer ftpClient.Close()
 
 	// send invalid user name
+	err = ftpClient.Login("", "test")
+	if err == nil {
+		t.Error("logon should fail, because the username is missing!", err)
+		return
+	}
+
+	// send invalid logon data
 	err = ftpClient.Login("asdf", "test")
 	if err == nil {
-		t.Error("logon should fail!", err)
+		t.Error("logon should fail, because the username is invalid!", err)
 		return
 	}
 
