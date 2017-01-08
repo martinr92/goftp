@@ -4,7 +4,11 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/martinr92/goftp)](https://goreportcard.com/report/github.com/martinr92/goftp)
 [![codecov](https://codecov.io/gh/martinr92/goftp/branch/master/graph/badge.svg)](https://codecov.io/gh/martinr92/goftp)
 
-Goftp is a simple FTP library written in golang. The implementation is based on the [RFC 959 - FILE TRANSFER PROTOCOL (FTP)](https://tools.ietf.org/html/rfc959)
+Goftp is a simple FTP library written in golang.
+The implementation is based on the [RFC 959 - FILE TRANSFER PROTOCOL (FTP)](https://tools.ietf.org/html/rfc959)
+
+## Features
+* active and passive data connection mode
 
 ## Usage
 Download the package and import it into your project.

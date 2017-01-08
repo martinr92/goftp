@@ -4,7 +4,7 @@ import "testing"
 import "strings"
 import "strconv"
 
-func TestSimpleUpload(t *testing.T) {
+func TestPassiveDataConnection(t *testing.T) {
 	// connect to remote server
 	ftpClient, err := NewFtp(getConnectionString())
 	if err != nil {
@@ -66,6 +66,47 @@ func TestSimpleUpload(t *testing.T) {
 
 	// open directory
 	if err = ftpClient.OpenDirectory("/home/test/testfolder/"); err != nil {
+		t.Error("unable to open directory!", err)
+		return
+	}
+
+	// upload a local file to the remote FTP server
+	if err = ftpClient.Upload("README.md", "README.md"); err != nil {
+		t.Error("file upload failed!", err)
+		return
+	}
+}
+
+func TestActiveDataConnection(t *testing.T) {
+	// connect to remote server
+	ftpClient, err := NewFtp(getConnectionString())
+	if err != nil {
+		t.Error("connection failed!", err)
+		return
+	}
+
+	// don't forget to close the connection
+	defer ftpClient.Close()
+
+	// set active mode
+	ftpClient.ActiveMode = true
+	ftpClient.ActiveModeIPv4 = "127.0.0.1"
+
+	// send user credentials
+	err = ftpClient.Login("test", "test")
+	if err != nil {
+		t.Error("logon failed", err)
+		return
+	}
+
+	// create the directory
+	if err = ftpClient.CreateDirectory("/home/test/testfolder_active/"); err != nil {
+		t.Error("unable to create direcory!", err)
+		return
+	}
+
+	// open directory
+	if err = ftpClient.OpenDirectory("/home/test/testfolder_active/"); err != nil {
 		t.Error("unable to open directory!", err)
 		return
 	}
