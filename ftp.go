@@ -74,6 +74,7 @@ func (ftpError *FtpError) Error() string {
 type Ftp struct {
 	ActiveMode     bool
 	ActiveModeIPv4 string
+	Verbose        bool
 	remoteAddr     string
 	connection     net.Conn
 	reader         *bufio.Reader
@@ -102,6 +103,12 @@ func NewFtp(remote string) (*Ftp, error) {
 	ftp.read()
 
 	return ftp, nil
+}
+
+func (ftp *Ftp) println(a ...interface{}) {
+	if ftp.Verbose {
+		fmt.Println(a)
+	}
 }
 
 // Login sends credentials to the FTP server and verifies the server login response status.
@@ -217,7 +224,7 @@ func (ftp *Ftp) openDataConnection() (net.Conn, net.Listener, error) {
 		// open passive connection
 		host := strings.Split(ftp.remoteAddr, ":")[0]
 		passiveRemoteAddr := host + ":" + strconv.Itoa(port)
-		fmt.Println("open passive connection:", passiveRemoteAddr)
+		ftp.println("open passive connection:", passiveRemoteAddr)
 		passiveConn, err := net.Dial("tcp", passiveRemoteAddr)
 		if err != nil {
 			return nil, nil, err
@@ -242,7 +249,7 @@ func (ftp *Ftp) openDataConnection() (net.Conn, net.Listener, error) {
 // Close quits the connection.
 func (ftp *Ftp) Close() {
 	ftp.connection.Close()
-	fmt.Println("Connection closed")
+	ftp.println("Connection closed")
 }
 
 func (ftp *Ftp) checkTextStatus(text string, statusCodes []FtpStatus) (matchedStatusCode *FtpStatus, err error) {
@@ -272,7 +279,7 @@ func (ftp *Ftp) passiveConnection() (int, error) {
 	// get port parts
 	portPart1String := ipPortData[4]
 	portPart2String := ipPortData[5]
-	fmt.Println("Port Part 1:", portPart1String, "; Port Part 2:", portPart2String)
+	ftp.println("Port Part 1:", portPart1String, "; Port Part 2:", portPart2String)
 
 	// calculate port number
 	portPart1, err := strconv.Atoi(portPart1String)
@@ -286,7 +293,7 @@ func (ftp *Ftp) passiveConnection() (int, error) {
 	}
 
 	port := portPart1*256 + portPart2
-	fmt.Println("Calculated Port:", port)
+	ftp.println("Calculated Port:", port)
 
 	return port, nil
 }
@@ -311,13 +318,13 @@ func (ftp *Ftp) activeDataConnection(activeConnection net.Listener) error {
 }
 
 func (ftp *Ftp) read() (string, error) {
-	fmt.Println("start reading...")
+	ftp.println("start reading...")
 	text, err := ftp.reader.ReadString('\n')
 	if err != nil {
 		return text, err
 	}
 
-	fmt.Println("read: >>", text, "<<")
+	ftp.println("read: >>", text, "<<")
 	return text, err
 }
 
@@ -338,10 +345,10 @@ func (ftp *Ftp) readCommand(expectedStatusCodes []FtpStatus) (responseText strin
 }
 
 func (ftp *Ftp) write(command string) error {
-	fmt.Println("write: >>", command, "<<")
+	ftp.println("write: >>", command, "<<")
 	_, err := ftp.writer.WriteString(command + "\n")
 	ftp.writer.Flush()
-	fmt.Println("write executed")
+	ftp.println("write executed")
 	return err
 }
 

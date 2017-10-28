@@ -14,6 +14,7 @@ func TestPassiveDataConnection(t *testing.T) {
 
 	// don't forget to close the connection
 	defer ftpClient.Close()
+	ftpClient.Verbose = true
 
 	// send invalid user name
 	err = ftpClient.Login("", "test")
@@ -94,6 +95,7 @@ func TestActiveDataConnection(t *testing.T) {
 
 	// don't forget to close the connection
 	defer ftpClient.Close()
+	ftpClient.Verbose = true
 
 	// send user credentials
 	err = ftpClient.Login("test", "test")
