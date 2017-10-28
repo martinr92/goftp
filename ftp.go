@@ -107,7 +107,7 @@ func NewFtp(remote string) (*Ftp, error) {
 
 func (ftp *Ftp) println(a ...interface{}) {
 	if ftp.Verbose {
-		fmt.Println(a)
+		fmt.Println(a...)
 	}
 }
 
